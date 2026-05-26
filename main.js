@@ -5,6 +5,7 @@ const canvas = document.getElementById("galaxyCanvas");
 const ctx = canvas.getContext("2d");
 // 全局状态控制
 let showHelperLines = true;
+let isPaused = false; // 暂停/步进模式状态
 
 let controlStars = [
   { x: 200, y: 400, radius: 5 + Math.random() * 4, color: "#00ffff" },
@@ -163,18 +164,18 @@ function animate() {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // 第三层：飞船附近增强亮度
+    // 第三层：飞船尾部能量增强（只画后方，不画前方）
     let breathPhase = Math.sin(Date.now() * 0.002) * 0.15;
     for (let t = 0; t <= 1; t += 0.008) {
       let p = getBezierPoint(controlStars, t);
-      let distToShip = Math.abs(t - globalT);
-      if (distToShip < 0.12) {
-        let proximityBoost = Math.pow(1 - distToShip / 0.12, 2);
+      let distToShip = globalT - t;
+      if (distToShip > 0 && distToShip < 0.15) {
+        let proximityBoost = Math.pow(1 - distToShip / 0.15, 2);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5 + proximityBoost * 2, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.4 + proximityBoost * 0.5})`;
-        ctx.shadowBlur = 8 + proximityBoost * 12;
-        ctx.shadowColor = `rgba(196, 113, 237, ${proximityBoost * 0.7})`;
+        ctx.arc(p.x, p.y, 2 + proximityBoost * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + proximityBoost * 0.4})`;
+        ctx.shadowBlur = 6 + proximityBoost * 10;
+        ctx.shadowColor = `rgba(196, 113, 237, ${proximityBoost * 0.5})`;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -259,22 +260,6 @@ function animate() {
     // (4) 【终极美学】：多层叠加渲染的"神话星舟"
     let finalPoint = pyramid[pyramid.length - 1][0];
 
-    trailPoints.push({
-      x: finalPoint.x,
-      y: finalPoint.y,
-      r: 2.5 + Math.random() * 1.5,
-      alpha: 0.45,
-    });
-
-    for (let i = 0; i < 3; i++) {
-      trailPoints.push({
-        x: finalPoint.x + (Math.random() - 0.5) * 8,
-        y: finalPoint.y + (Math.random() - 0.5) * 8,
-        r: 1 + Math.random() * 0.8,
-        alpha: 0.25 + Math.random() * 0.15,
-      });
-    }
-
     let nextT = Math.min(globalT + 0.001, 1);
     let nextPoint = getBezierPoint(controlStars, nextT);
     let dy = nextPoint.y - finalPoint.y;
@@ -324,11 +309,41 @@ function animate() {
 
     ctx.restore();
 
-    let speedFactor = 0.002 + Math.sin(globalT * Math.PI) * 0.002;
-    globalT += speedFactor;
-    if (globalT > 1) globalT = 0;
+    // 尾迹残影：在飞船尾部（-12,0 局部坐标 → 转换为世界坐标）
+    let tailWorldX = finalPoint.x + Math.cos(angle) * -14;
+    let tailWorldY = finalPoint.y + Math.sin(angle) * -14;
+
+    trailPoints.push({
+      x: tailWorldX,
+      y: tailWorldY,
+      r: 2.5 + Math.random() * 1.5,
+      alpha: 0.45,
+    });
+
+    for (let i = 0; i < 3; i++) {
+      trailPoints.push({
+        x: tailWorldX + (Math.random() - 0.5) * 8,
+        y: tailWorldY + (Math.random() - 0.5) * 8,
+        r: 1 + Math.random() * 0.8,
+        alpha: 0.25 + Math.random() * 0.15,
+      });
+    }
+
+    if (!isPaused) {
+      let speedFactor = 0.002 + Math.sin(globalT * Math.PI) * 0.002;
+      globalT += speedFactor;
+      if (globalT > 1) globalT = 0;
+    }
 
     document.getElementById("tValue").textContent = globalT.toFixed(3);
+    document.getElementById("pointCount").textContent = controlStars.length;
+    document.getElementById("degreeValue").textContent = Math.max(
+      0,
+      controlStars.length - 1,
+    );
+    if (!isPaused) {
+      document.getElementById("tSlider").value = Math.round(globalT * 1000);
+    }
   } else if (controlStars.length === 1) {
     ctx.beginPath();
     ctx.arc(controlStars[0].x, controlStars[0].y, 6, 0, Math.PI * 2);
@@ -340,8 +355,15 @@ function animate() {
     document.getElementById("tValue").textContent = "—";
   }
 
+  // 更新参数显示
+  document.getElementById("pointCount").textContent = controlStars.length;
+  document.getElementById("degreeValue").textContent = Math.max(
+    0,
+    controlStars.length - 1,
+  );
+
   // 4.4 画主控制星星（恒星发光）
-  controlStars.forEach((star) => {
+  controlStars.forEach((star, index) => {
     ctx.beginPath();
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
     ctx.shadowBlur = 15;
@@ -349,6 +371,12 @@ function animate() {
     ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.fill();
     ctx.shadowBlur = 0;
+
+    // 控制点标签 P0, P1, P2...
+    ctx.font = "11px 'IBM Plex Mono', 'JetBrains Mono', monospace";
+    ctx.fillStyle = "rgba(180, 200, 240, 0.5)";
+    ctx.textAlign = "left";
+    ctx.fillText(`P${index}`, star.x + star.radius + 8, star.y + 4);
   });
 
   requestAnimationFrame(animate);
@@ -407,6 +435,21 @@ canvas.addEventListener("mousemove", function (event) {
     const rect = canvas.getBoundingClientRect();
     controlStars[draggedStarIndex].x = event.clientX - rect.left;
     controlStars[draggedStarIndex].y = event.clientY - rect.top;
+  } else {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    let hovering = false;
+    for (let i = 0; i < controlStars.length; i++) {
+      let dx = mouseX - controlStars[i].x;
+      let dy = mouseY - controlStars[i].y;
+      if (Math.sqrt(dx * dx + dy * dy) <= controlStars[i].radius + 10) {
+        hovering = true;
+        break;
+      }
+    }
+    canvas.style.cursor = hovering ? "pointer" : "crosshair";
   }
 });
 
@@ -444,5 +487,55 @@ document.getElementById("clearBtn").addEventListener("click", function () {
 });
 
 document.getElementById("toggleLines").addEventListener("change", function (e) {
-  showHelperLines = e.target.checked; // 勾选框改变时，更新全局变量
+  showHelperLines = e.target.checked;
+});
+
+// 暂停/继续按钮
+document.getElementById("pauseBtn").addEventListener("click", function () {
+  isPaused = !isPaused;
+  this.textContent = isPaused ? "resume（继续）" : "pause（暂停）";
+  this.classList.toggle("active", isPaused);
+  document.getElementById("stepBtn").disabled = !isPaused;
+});
+
+// 步进按钮
+document.getElementById("stepBtn").addEventListener("click", function () {
+  if (isPaused) {
+    globalT += 0.01;
+    if (globalT > 1) globalT = 0;
+    document.getElementById("tSlider").value = Math.round(globalT * 1000);
+  }
+});
+
+// 键盘快捷键
+window.addEventListener("keydown", function (e) {
+  if (e.code === "Space") {
+    e.preventDefault();
+    document.getElementById("pauseBtn").click();
+  } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    if (!isPaused) {
+      isPaused = true;
+      document.getElementById("pauseBtn").textContent = "resume（继续）";
+      document.getElementById("pauseBtn").classList.add("active");
+      document.getElementById("stepBtn").disabled = false;
+    }
+    globalT += e.key === "ArrowRight" ? 0.01 : -0.01;
+    if (globalT > 1) globalT = 1;
+    if (globalT < 0) globalT = 0;
+    document.getElementById("tSlider").value = Math.round(globalT * 1000);
+  } else if (e.key.toLowerCase() === "c") {
+    document.getElementById("clearBtn").click();
+  }
+});
+
+// t 值滑块
+document.getElementById("tSlider").addEventListener("input", function () {
+  if (!isPaused) {
+    isPaused = true;
+    document.getElementById("pauseBtn").textContent = "resume（继续）";
+    document.getElementById("pauseBtn").classList.add("active");
+    document.getElementById("stepBtn").disabled = false;
+  }
+  globalT = parseInt(this.value) / 1000;
 });

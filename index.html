@@ -9,6 +9,17 @@
   <body>
     <canvas id="galaxyCanvas"></canvas>
 
+    <!-- 首次加载操作指引 -->
+    <div id="introOverlay" class="intro-overlay">
+      <div class="intro-content">
+        <p class="intro-title">Bezier 星轨可视化</p>
+        <p class="intro-hint">双击创造星体</p>
+        <p class="intro-hint">拖动重塑星轨</p>
+        <p class="intro-hint">shift + click恒星爆炸，去除节点</p>
+        <p class="intro-hint">space 暂停 / 方向键步进 / c 清空</p>
+      </div>
+    </div>
+
     <div id="controlPanel" class="glass-panel">
       <div class="control-row">
         <label class="toggle-label">
@@ -16,16 +27,39 @@
           <span class="toggle-text">gravity field （重力场辅助线）</span>
         </label>
         <button id="clearBtn" class="action-btn">reset（重置所有星体）</button>
+        <button id="pauseBtn" class="action-btn">pause（暂停）</button>
+        <button id="stepBtn" class="action-btn step-btn" disabled>
+          step（步进）
+        </button>
+      </div>
+      <div class="status-row">
         <span class="status-display"
           >t = <span class="param" id="tValue">0.000</span></span
         >
+        <span class="status-display"
+          >points = <span class="param" id="pointCount">4</span></span
+        >
+        <span class="status-display"
+          >degree = <span class="param" id="degreeValue">3</span></span
+        >
       </div>
-    </div>
-
-    <div class="tips">
-      <p>double-click · 创造星体</p>
-      <p>drag · 重塑星轨</p>
-      <p>shift + click · 恒星爆炸</p>
+      <div class="slider-row">
+        <span class="slider-label">t</span>
+        <input
+          type="range"
+          id="tSlider"
+          min="0"
+          max="1000"
+          value="0"
+          class="t-slider"
+        />
+      </div>
+      <div class="tips">
+        <p>double-click · 创造星体</p>
+        <p>drag · 重塑星轨</p>
+        <p>shift + click · 恒星爆炸</p>
+        <p>space · pause | ← → · step | c · clear</p>
+      </div>
     </div>
 
     <script src="main.js"></script>

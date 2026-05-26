@@ -11,6 +11,54 @@ body {
 
 canvas {
   display: block;
+  cursor: crosshair;
+}
+
+/* 首次加载操作指引 */
+.intro-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(5, 5, 12, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeOut 0.8s ease 3s forwards;
+  pointer-events: none;
+}
+
+.intro-content {
+  text-align: center;
+  font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+}
+
+.intro-title {
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: 4px;
+  color: rgba(220, 230, 255, 0.7);
+  margin-bottom: 32px;
+  text-transform: uppercase;
+}
+
+.intro-hint {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(180, 190, 220, 0.45);
+  margin: 10px 0;
+  transition: opacity 0.5s ease;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .glass-panel {
@@ -24,14 +72,21 @@ canvas {
   padding: 20px 32px;
   pointer-events: auto;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .control-row {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
   gap: 24px;
+  padding-left: 4px;
 }
 
 .toggle-label {
@@ -104,15 +159,15 @@ canvas {
   border: 1px solid rgba(220, 230, 255, 0.1);
   color: rgba(140, 150, 180, 0.5);
   font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.5px;
-  padding: 8px 20px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.25s ease;
 }
 
-.action-btn:hover {
+.action-btn:hover:not(:disabled) {
   background: rgba(220, 230, 255, 0.12);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -120,17 +175,87 @@ canvas {
   color: rgba(220, 230, 255, 0.75);
 }
 
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-btn.active {
+  background: rgba(196, 113, 237, 0.15);
+  border-color: rgba(196, 113, 237, 0.3);
+  color: rgba(200, 180, 240, 0.85);
+}
+
 .status-display {
   font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
   font-size: 11px;
-  color: rgba(180, 190, 220, 0.4);
+  color: rgba(160, 170, 200, 0.4);
   letter-spacing: 0.3px;
   pointer-events: none;
 }
 
 .status-display .param {
-  color: rgba(220, 230, 255, 0.55);
+  color: rgba(220, 230, 255, 0.6);
   font-weight: 500;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 4px;
+}
+
+.slider-label {
+  font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: rgba(180, 190, 220, 0.5);
+  letter-spacing: 0.3px;
+  min-width: 12px;
+}
+
+.t-slider {
+  flex: 1;
+  max-width: 300px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(30, 35, 50, 0.5);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.t-slider:hover {
+  background: rgba(30, 35, 50, 0.7);
+}
+
+.t-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(220, 230, 255, 0.85);
+  box-shadow: 0 0 8px rgba(196, 113, 237, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.t-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px rgba(196, 113, 237, 0.6);
+}
+
+.t-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(220, 230, 255, 0.85);
+  box-shadow: 0 0 8px rgba(196, 113, 237, 0.4);
+  cursor: pointer;
+  border: none;
 }
 
 .tips {
