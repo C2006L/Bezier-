@@ -7,25 +7,58 @@ const ctx = canvas.getContext("2d");
 let showHelperLines = true;
 let isPaused = false; // 暂停/步进模式状态
 
-let controlStars = [
-  { x: 200, y: 400, radius: 5 + Math.random() * 4, color: "#00ffff" },
-  { x: 400, y: 150, radius: 5 + Math.random() * 4, color: "#00ffff" },
-  { x: 700, y: 150, radius: 5 + Math.random() * 4, color: "#00ffff" },
-  { x: 900, y: 400, radius: 5 + Math.random() * 4, color: "#00ffff" },
-];
+function initControlStars() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  return [
+    {
+      x: w * 0.15,
+      y: h * 0.45,
+      radius: 5 + Math.random() * 4,
+      color: "#00ffff",
+    },
+    {
+      x: w * 0.35,
+      y: h * 0.2,
+      radius: 5 + Math.random() * 4,
+      color: "#00ffff",
+    },
+    {
+      x: w * 0.65,
+      y: h * 0.2,
+      radius: 5 + Math.random() * 4,
+      color: "#00ffff",
+    },
+    {
+      x: w * 0.85,
+      y: h * 0.45,
+      radius: 5 + Math.random() * 4,
+      color: "#00ffff",
+    },
+  ];
+}
+
+let controlStars = initControlStars();
 
 let backgroundStars = [];
-for (let i = 0; i < 150; i++) {
-  backgroundStars.push({
-    x: Math.random() * window.innerWidth,
-    y: Math.random() * window.innerHeight,
-    r: Math.random() * 1.5,
-    alpha: Math.random(),
-    twinkleSpeed: 0.02 + Math.random() * 0.03,
-  });
+
+function initBackgroundStars() {
+  const count = Math.floor(window.innerWidth * window.innerHeight * 0.00015);
+  backgroundStars = [];
+  for (let i = 0; i < count; i++) {
+    backgroundStars.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5,
+      alpha: Math.random(),
+      twinkleSpeed: 0.02 + Math.random() * 0.03,
+    });
+  }
 }
+initBackgroundStars();
 let shootingStars = [];
 let explosions = [];
+let shockwaves = [];
 
 // 【新增】：全局动画参数 t，用于驱动几何辅助线的运动
 let globalT = 0;
@@ -75,8 +108,59 @@ function getDeCasteljauPyramid(points, t) {
 }
 
 // ==========================================
-// 4. 宇宙渲染引擎 (辅助线“星空化”重制版)
+// 4. 宇宙渲染引擎 (辅助线"星空化"重制版)
 // ==========================================
+function createExplosion(x, y, starColor) {
+  shockwaves.push({ x, y, radius: 2, alpha: 0.7, life: 1.0 });
+
+  for (let i = 0; i < 28; i++) {
+    let angle = Math.random() * Math.PI * 2;
+    let speed = 3 + Math.random() * 8;
+    explosions.push({
+      type: "spark",
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      maxLife: 0.5 + Math.random() * 0.3,
+      size: 1 + Math.random() * 1.8,
+      color: "#ffffff",
+    });
+  }
+
+  for (let i = 0; i < 20; i++) {
+    let angle = Math.random() * Math.PI * 2;
+    let speed = 1.2 + Math.random() * 3.5;
+    explosions.push({
+      type: "ember",
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      maxLife: 0.7 + Math.random() * 0.5,
+      size: 2 + Math.random() * 3,
+      color: starColor,
+    });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    let angle = Math.random() * Math.PI * 2;
+    let speed = 0.3 + Math.random() * 1.0;
+    explosions.push({
+      type: "dust",
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      maxLife: 1.2 + Math.random() * 0.6,
+      size: 6 + Math.random() * 10,
+    });
+  }
+}
+
 function animate() {
   // 4.1 刷深空背景
   let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -119,26 +203,84 @@ function animate() {
     if (ms.life <= 0) shootingStars.splice(i, 1);
   }
 
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    let sw = shockwaves[i];
+    sw.radius += 2.5;
+    sw.life -= 0.025;
+    if (sw.life <= 0) {
+      shockwaves.splice(i, 1);
+      continue;
+    }
+    let ringAlpha = sw.life * sw.alpha;
+    ctx.beginPath();
+    ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha * 0.5})`;
+    ctx.lineWidth = 4 * sw.life;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = `rgba(196, 113, 237, ${ringAlpha})`;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(sw.x, sw.y, sw.radius * 0.85, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0, 255, 255, ${ringAlpha * 0.3})`;
+    ctx.lineWidth = 1.5 * sw.life;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
   for (let i = explosions.length - 1; i >= 0; i--) {
     let p = explosions[i];
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.random() * 2 + 1, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.life;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = p.color;
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-    ctx.shadowBlur = 0;
-
     p.x += p.vx;
     p.y += p.vy;
-    p.vx *= 0.92;
-    p.vy *= 0.92;
-    p.life -= 0.02;
+    p.life -= 0.018;
+    if (p.life <= 0) {
+      explosions.splice(i, 1);
+      continue;
+    }
 
-    if (p.life <= 0) explosions.splice(i, 1);
+    if (p.type === "spark") {
+      p.vx *= 0.93;
+      p.vy *= 0.93;
+      let sz = p.size * p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+      ctx.fillStyle =
+        p.life > 0.5 ? "#ffffff" : `rgba(255, 200, 130, ${p.life * 2})`;
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = "#ffcc80";
+      ctx.fill();
+    } else if (p.type === "ember") {
+      p.vx *= 0.96;
+      p.vy *= 0.96;
+      let grow = 1 + (1 - p.life) * 0.6;
+      let sz = p.size * grow;
+      let r = p.life > 0.6 ? 0 : 255;
+      let g = p.life > 0.6 ? 255 : Math.floor(140 * p.life);
+      let b = p.life > 0.6 ? 255 : Math.floor(80 * p.life);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${p.life * 0.85})`;
+      ctx.globalAlpha = p.life * 0.85;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `rgba(255, 94, 98, ${p.life * 0.5})`;
+      ctx.fill();
+    } else if (p.type === "dust") {
+      p.vx *= 0.985;
+      p.vy *= 0.985;
+      let expand = 1 + (1 - p.life) * 3;
+      let sz = p.size * expand;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(160, 90, 220, ${p.life * 0.25})`;
+      ctx.globalAlpha = p.life * 0.4;
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = `rgba(160, 90, 220, ${p.life * 0.35})`;
+      ctx.fill();
+    }
   }
+  ctx.globalAlpha = 1.0;
+  ctx.shadowBlur = 0;
 
   // 4.3 绘制星轨和动态算法辅助线 (完美融合星空)
   if (controlStars.length >= 2) {
@@ -330,7 +472,8 @@ function animate() {
     }
 
     if (!isPaused) {
-      let speedFactor = 0.002 + Math.sin(globalT * Math.PI) * 0.002;
+      let eased = Math.pow(Math.sin(globalT * Math.PI), 2);
+      let speedFactor = 0.0015 + eased * 0.004;
       globalT += speedFactor;
       if (globalT > 1) globalT = 0;
     }
@@ -399,16 +542,7 @@ canvas.addEventListener("mousedown", function (event) {
     if (Math.sqrt(dx * dx + dy * dy) <= controlStars[i].radius + 10) {
       if (event.shiftKey) {
         let star = controlStars[i];
-        for (let p = 0; p < 40; p++) {
-          explosions.push({
-            x: star.x,
-            y: star.y,
-            vx: (Math.random() - 0.5) * 12,
-            vy: (Math.random() - 0.5) * 12,
-            life: 1.0,
-            color: Math.random() > 0.5 ? star.color : "#ffffff",
-          });
-        }
+        createExplosion(star.x, star.y, star.color);
         controlStars.splice(i, 1);
         return;
       }
@@ -462,6 +596,7 @@ window.addEventListener("mouseup", function () {
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  initBackgroundStars();
 }
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
@@ -472,16 +607,7 @@ animate();
 // ==========================================
 document.getElementById("clearBtn").addEventListener("click", function () {
   controlStars.forEach((star) => {
-    for (let p = 0; p < 40; p++) {
-      explosions.push({
-        x: star.x,
-        y: star.y,
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.5) * 12,
-        life: 1.0,
-        color: Math.random() > 0.5 ? star.color : "#ffffff",
-      });
-    }
+    createExplosion(star.x, star.y, star.color);
   });
   controlStars = [];
 });
